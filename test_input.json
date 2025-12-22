@@ -1,0 +1,12 @@
+{
+  "input": {
+    "prompts": [
+      "She starts explaining calmly.",
+      "She gestures slightly while talking.",
+      "She finishes with a confident look."
+    ],
+    "clip_sec": 5,
+    "img_path": "s3://messproof-staging/uploads/assets/12/2/image/20251014_100659_vvZIKAtX.png",
+    "level": "stag"
+  }
+}
