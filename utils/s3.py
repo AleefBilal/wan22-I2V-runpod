@@ -1,6 +1,6 @@
 import boto3
 import os
-from utlis.utllity import get_env
+from utils.utllity import get_env
 
 def get_s3_client():
     return boto3.client(
