@@ -4,7 +4,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
 # System dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update
+Run apt-get install -y \
     python3 \
     python3-pip \
     python3-dev \
@@ -18,22 +19,16 @@ WORKDIR /app
 # Python tooling
 RUN pip install --upgrade pip setuptools wheel
 
-# Install PyTorch (CUDA index ONLY)
-RUN pip install --no-cache-dir \
-    torch==2.5.1+cu128 \
-    torchvision==0.20.1+cu128 \
-    torchaudio==2.5.1+cu128 \
-    --index-url https://download.pytorch.org/whl/cu128
-
 
 # Install remaining deps (PyPI + git)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    --extra-index-url https://download.pytorch.org/whl/cu128
 
 # Copy application code
 COPY . .
 
 # Pre-download models at build time
-RUN python preload_model.py
+RUN #python preload_model.py
 
 CMD ["python", "app.py"]
