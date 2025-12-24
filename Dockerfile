@@ -29,6 +29,6 @@ RUN pip install --no-cache-dir -r requirements.txt \
 COPY . .
 
 # Pre-download models at build time
-RUN python preload_model.py
+RUN python3 preload_model.py
 
 CMD ["python", "app.py"]
