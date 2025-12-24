@@ -31,4 +31,4 @@ COPY . .
 # Pre-download models at build time
 RUN python3 preload_model.py
 
-CMD ["python", "app.py"]
+CMD ["python3", "app.py"]

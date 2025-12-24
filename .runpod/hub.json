@@ -6,7 +6,7 @@
 
   "config": {
     "runsOn": "GPU",
-    "containerDiskInGb": 100,
+    "containerDiskInGb": 150,
 
     "env": [
       {
