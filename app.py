@@ -7,7 +7,10 @@ import shutil
 import torch
 from pathlib import Path
 from utils.s3 import download_image, upload_video
-from utils.utllity import load_environment, classify_env, extract_last_clear_frame
+from utils.utllity import (load_environment,
+                           reset_runtime_env,
+                           classify_env,
+                           extract_last_clear_frame,)
 from utils.video import load_pipe, generate_video
 from moviepy import VideoFileClip, concatenate_videoclips
 
@@ -25,6 +28,7 @@ def handler(event):
     clips = []
 
     try:
+        reset_runtime_env()
         inp = event["input"]
 
         # ---- Info-only mode ----
@@ -106,9 +110,8 @@ def handler(event):
         )
 
         # ---- Upload ----
-        bucket = os.environ["OUTPUT_BUCKET"]
         key = f"video_gen/wan2/{uuid.uuid4()}.mp4"
-        s3_path = upload_video(str(final_video_path), bucket, key)
+        s3_path = upload_video(str(final_video_path), key)
 
         return {"video_path": s3_path}
 

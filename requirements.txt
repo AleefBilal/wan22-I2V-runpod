@@ -1,0 +1,30 @@
+# Wan 2.2 Diffusers fork
+git+https://github.com/linoytsaban/diffusers.git@wan22-loras
+
+# Torch stack
+torch==2.5.1+cu128
+torchvision==0.20.1+cu128
+torchaudio==2.5.1+cu128
+
+# Core ecosystem
+transformers==4.57.3
+accelerate==1.12.0
+peft==0.18.0
+sentencepiece==0.2.1
+safetensors==0.7.0
+ftfy==6.3.1
+python-dotenv==1.2.1
+
+# Video / IO
+opencv-python==4.12.0.88
+imageio-ffmpeg==0.6.0
+moviepy==2.2.1
+
+# AWS
+boto3==1.34.122
+
+# RunPod
+runpod==1.6.2
+
+# Quantization
+torchao==0.11.0

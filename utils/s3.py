@@ -1,13 +1,18 @@
 import boto3
-import os
-from utils.utllity import get_env
+from utils.utllity import (
+    AWS_ACCESS_KEY_ID,
+    AWS_SECRET_ACCESS_KEY,
+    AWS_REGION,
+    S3_BUCKET,
+)
+
 
 def get_s3_client():
     return boto3.client(
         "s3",
-        aws_access_key_id=get_env("LAMBDA_ACCESS_KEY_ID"),
-        aws_secret_access_key=get_env("LAMBDA_SECRET_ACCESS_KEY"),
-        region_name=get_env("LAMBDA_DEFAULT_REGION"),
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION
     )
 
 def download_image(s3_uri, local_path):
@@ -26,7 +31,7 @@ def download_image(s3_uri, local_path):
     s3 = get_s3_client()
     s3.download_file(bucket, key, local_path)
 
-def upload_video(local_path, bucket, key):
+def upload_video(local_path, key):
     s3 = get_s3_client()
-    s3.upload_file(local_path, bucket, key)
-    return f"s3://{bucket}/{key}"
+    s3.upload_file(local_path, S3_BUCKET, key)
+    return f"s3://{S3_BUCKET}/{key}"

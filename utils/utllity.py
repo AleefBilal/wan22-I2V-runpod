@@ -1,83 +1,75 @@
 import os
 import cv2
-from dotenv import load_dotenv, dotenv_values, find_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-# ---- Global state ----
-_ENV_LOADED = False
-_ENV_NAME = None
-_ENV_VARS = {}
+# ============================
+# Runtime globals (per request)
+# ============================
+RUNTIME_ENV = None
+AWS_ACCESS_KEY_ID = None
+AWS_SECRET_ACCESS_KEY = None
+AWS_REGION = None
+S3_BUCKET = None
 
-def load_environment(env_key: str = "stag", force_reload: bool = False) -> dict:
+
+def reset_runtime_env():
+    global RUNTIME_ENV
+    global AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET
+
+    RUNTIME_ENV = None
+    AWS_ACCESS_KEY_ID = None
+    AWS_SECRET_ACCESS_KEY = None
+    AWS_REGION = None
+    S3_BUCKET = None
+
+
+def load_environment(env_key: str = "stag"):
     """
-    Load environment variables based on env_key ('stag' or 'prod').
+    Configure runtime environment (stag / prod).
 
-    Args:
-        env_key (str): 'stag' or 'prod'
-        force_reload (bool): reload even if already loaded
-
-    Returns:
-        dict: loaded environment variables
+    - On RunPod: uses injected env vars
+    - Locally: loads stag.env / prod.env if present
     """
-    global _ENV_LOADED, _ENV_NAME, _ENV_VARS
+    global RUNTIME_ENV
+    global AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET
 
-    if _ENV_LOADED and not force_reload:
-        return _ENV_VARS
-
-    if env_key == "stag":
-        env_path = find_dotenv("stag.env", usecwd=True)
-    elif env_key == "prod":
-        env_path = find_dotenv("prod.env", usecwd=True)
-    else:
+    if env_key not in ("stag", "prod"):
         raise ValueError("env_key must be 'stag' or 'prod'")
 
-    if not env_path:
-        raise FileNotFoundError(f"Environment file not found for '{env_key}'")
+    # ---- Local dev only (.env optional) ----
+    env_file = find_dotenv(f"{env_key}.env", usecwd=True)
+    if env_file:
+        load_dotenv(env_file, override=False)
+        print(f"🟢 Loaded local {env_key}.env")
+    else:
+        print("🟡 Using injected RunPod env vars")
 
-    load_dotenv(dotenv_path=env_path, override=True)
-    _ENV_VARS = dotenv_values(env_path)
+    if env_key == "stag":
+        AWS_ACCESS_KEY_ID = os.environ["STAG_AWS_ACCESS_KEY_ID"]
+        AWS_SECRET_ACCESS_KEY = os.environ["STAG_AWS_SECRET_ACCESS_KEY"]
+        S3_BUCKET = os.environ["STAG_S3_BUCKET"]
+    else:
+        AWS_ACCESS_KEY_ID = os.environ["PROD_AWS_ACCESS_KEY_ID"]
+        AWS_SECRET_ACCESS_KEY = os.environ["PROD_AWS_SECRET_ACCESS_KEY"]
+        S3_BUCKET = os.environ["PROD_S3_BUCKET"]
 
-    if not _ENV_VARS:
-        raise RuntimeError(f"No environment variables found in {env_path}")
+    AWS_REGION = os.environ.get("AWS_REGION", "us-east-2")
+    RUNTIME_ENV = env_key
 
-    _ENV_LOADED = True
-    _ENV_NAME = env_key
-
-    print(f"✅ Loaded '{env_key}' environment from: {env_path}")
-    return _ENV_VARS
-
-
-def get_env(key: str, default=None):
-    """Safe env getter after environment is loaded."""
-    return os.getenv(key, default)
-
-
-def current_env():
-    """Returns currently loaded environment name."""
-    return _ENV_NAME
+    print(f"✅ Runtime environment configured: {env_key}")
+    return RUNTIME_ENV
 
 
 def classify_env(value: str, default: str = "stag") -> str:
-    """
-    Classify environment from a string.
-
-    Examples:
-        'messproof-staging'    -> 'stag'
-        'messproof-production' -> 'prod'
-    """
     if not value:
         return default
 
     val = value.lower()
-
     if "prod" in val or "production" in val:
         return "prod"
-
     if "stag" in val or "staging" in val:
         return "stag"
-
     return default
-
-
 
 
 def extract_last_clear_frame(
@@ -112,4 +104,3 @@ def extract_last_clear_frame(
 
     cv2.imwrite(output_path, last_clear_frame)
     return output_path
-
