@@ -6,7 +6,7 @@ This repository contains a **Dockerized, serverless deployment** of the **Wan 2.
 This setup **expects the Wan 2.2 model files to already exist on disk** and be **mounted into the container** at:
 
 ```
-/runpod-volume/models
+/runpod-volume
 ```
 
 This is the **recommended and production-safe setup** for large video generation models.
