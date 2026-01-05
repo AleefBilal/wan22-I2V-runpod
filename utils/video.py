@@ -11,16 +11,22 @@ from diffusers.utils.export_utils import export_to_video
 from torchao.quantization import quantize_
 from torchao.quantization import Int8WeightOnlyConfig
 
+
+
+
 # =========================
 # Global config
 # =========================
-MODEL_ID = "/models/Wan2.2-I2V-A14B-Diffusers"
-LORA_ID = "/models/lora/WanVideo_comfy"
+MODEL_ID = "/runpod-volume/models/Wan2.2-I2V-A14B-Diffusers"
+LORA_ID = "/runpod-volume/models/lora/WanVideo_comfy"
 DEVICE = "cuda"
 
 FIXED_FPS = 16
+MAX_DIM = 832
+MIN_DIM = 480
+MULTIPLE_OF = 16
 MIN_FRAMES_MODEL = 8
-MAX_FRAMES_MODEL = 250
+MAX_FRAMES_MODEL = 7720
 
 DEFAULT_NEGATIVE_PROMPT = (
     "low quality, worst quality, motion artifacts, unstable motion, jitter, frame jitter, "
@@ -48,10 +54,15 @@ def get_num_frames(duration_seconds: float) -> int:
     return int(np.clip(frames + 1, MIN_FRAMES_MODEL, MAX_FRAMES_MODEL))
 
 
-def resize_image(image: Image.Image, max_side: int = 768) -> Image.Image:
+def resize_image(image: Image.Image) -> Image.Image:
     w, h = image.size
-    scale = min(max_side / w, max_side / h, 1.0)
-    return image.resize((int(w * scale), int(h * scale)), Image.BICUBIC)
+    scale = min(MAX_DIM / max(w, h), 1.0)
+    w, h = int(w * scale), int(h * scale)
+    w = (w // MULTIPLE_OF) * MULTIPLE_OF
+    h = (h // MULTIPLE_OF) * MULTIPLE_OF
+    w = max(MIN_DIM, w)
+    h = max(MIN_DIM, h)
+    return image.resize((w, h), Image.LANCZOS)
 
 
 # =========================
@@ -90,13 +101,13 @@ def load_pipe():
     print("⚡ Loading Lightning LoRA...")
 
     pipe.load_lora_weights(
-        "/models/lora/WanVideo_comfy",
+        "/runpod-volume/models/lora/WanVideo_comfy",
         weight_name="Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank128_bf16.safetensors",
         adapter_name="lightx2v",
     )
 
     pipe.load_lora_weights(
-        "/models/lora/WanVideo_comfy",
+        "/runpod-volume/models/lora/WanVideo_comfy",
         weight_name="Lightx2v/lightx2v_I2V_14B_480p_cfg_step_distill_rank128_bf16.safetensors",
         adapter_name="lightx2v_2",
         load_into_transformer_2=True,

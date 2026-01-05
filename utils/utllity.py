@@ -2,41 +2,10 @@ import os
 import cv2
 from dotenv import load_dotenv, find_dotenv
 
-# ============================
-# Runtime globals (per request)
-# ============================
-RUNTIME_ENV = None
-AWS_ACCESS_KEY_ID = None
-AWS_SECRET_ACCESS_KEY = None
-AWS_REGION = None
-S3_BUCKET = None
-
-
-def reset_runtime_env():
-    global RUNTIME_ENV
-    global AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET
-
-    RUNTIME_ENV = None
-    AWS_ACCESS_KEY_ID = None
-    AWS_SECRET_ACCESS_KEY = None
-    AWS_REGION = None
-    S3_BUCKET = None
-
-
 def load_environment(env_key: str = "stag"):
-    """
-    Configure runtime environment (stag / prod).
-
-    - On RunPod: uses injected env vars
-    - Locally: loads stag.env / prod.env if present
-    """
-    global RUNTIME_ENV
-    global AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET
-
     if env_key not in ("stag", "prod"):
         raise ValueError("env_key must be 'stag' or 'prod'")
 
-    # ---- Local dev only (.env optional) ----
     env_file = find_dotenv(f"{env_key}.env", usecwd=True)
     if env_file:
         load_dotenv(env_file, override=False)
@@ -45,20 +14,18 @@ def load_environment(env_key: str = "stag"):
         print("🟡 Using injected RunPod env vars")
 
     if env_key == "stag":
-        AWS_ACCESS_KEY_ID = os.environ["STAG_AWS_ACCESS_KEY_ID"]
-        AWS_SECRET_ACCESS_KEY = os.environ["STAG_AWS_SECRET_ACCESS_KEY"]
-        S3_BUCKET = os.environ["STAG_S3_BUCKET"]
+        os.environ["AWS_ACCESS_KEY_ID"] = os.environ["STAG_AWS_ACCESS_KEY_ID"]
+        os.environ["AWS_SECRET_ACCESS_KEY"] = os.environ["STAG_AWS_SECRET_ACCESS_KEY"]
+        os.environ["LAMBDA_BUCKET"] = os.environ["LAMBDA_BUCKET"]
     else:
-        AWS_ACCESS_KEY_ID = os.environ["PROD_AWS_ACCESS_KEY_ID"]
-        AWS_SECRET_ACCESS_KEY = os.environ["PROD_AWS_SECRET_ACCESS_KEY"]
-        S3_BUCKET = os.environ["PROD_S3_BUCKET"]
+        os.environ["AWS_ACCESS_KEY_ID"] = os.environ["PROD_AWS_ACCESS_KEY_ID"]
+        os.environ["AWS_SECRET_ACCESS_KEY"] = os.environ["PROD_AWS_SECRET_ACCESS_KEY"]
+        os.environ["LAMBDA_BUCKET"] = os.environ["LAMBDA_BUCKET"]
 
-    AWS_REGION = os.environ.get("AWS_REGION", "us-east-2")
-    RUNTIME_ENV = env_key
+    os.environ.setdefault("AWS_REGION", "us-east-2")
 
     print(f"✅ Runtime environment configured: {env_key}")
-    return RUNTIME_ENV
-
+    return env_key
 
 def classify_env(value: str, default: str = "stag") -> str:
     if not value:
@@ -72,10 +39,12 @@ def classify_env(value: str, default: str = "stag") -> str:
     return default
 
 
+
 def extract_last_clear_frame(
     video_path: str,
     output_path: str,
     sharpness_threshold: float = 75.0,
+    min_brightness: float = 30.0,   # <— NEW
 ):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -83,6 +52,7 @@ def extract_last_clear_frame(
 
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     last_clear_frame = None
+    last_valid_frame = None
 
     for i in range(total_frames - 1, -1, -1):
         cap.set(cv2.CAP_PROP_POS_FRAMES, i)
@@ -90,17 +60,26 @@ def extract_last_clear_frame(
         if not ret:
             continue
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        sharpness = cv2.Laplacian(gray, cv2.CV_64F).var()
+        if last_valid_frame is None:
+            last_valid_frame = frame
 
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        brightness = gray.mean()
+        if brightness < min_brightness:
+            continue  # ⬅️ skip fade-out / black frames
+
+        sharpness = cv2.Laplacian(gray, cv2.CV_64F).var()
         if sharpness >= sharpness_threshold:
             last_clear_frame = frame
             break
 
     cap.release()
 
-    if last_clear_frame is None:
-        raise RuntimeError("No clear frame found, lower threshold.")
+    final_frame = last_clear_frame if last_clear_frame is not None else last_valid_frame
 
-    cv2.imwrite(output_path, last_clear_frame)
+    if final_frame is None:
+        raise RuntimeError("No readable frame found in video.")
+
+    cv2.imwrite(output_path, final_frame)
     return output_path

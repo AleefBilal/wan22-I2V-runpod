@@ -8,29 +8,29 @@ import torch
 from pathlib import Path
 from utils.s3 import download_image, upload_video
 from utils.utllity import (load_environment,
-                           reset_runtime_env,
+                           # reset_runtime_env,
                            classify_env,
                            extract_last_clear_frame,)
 from utils.video import load_pipe, generate_video
 from moviepy import VideoFileClip, concatenate_videoclips
-
+from preload_model import ensure_models
 logging.basicConfig(level=logging.INFO)
 
+# ensure_models()
 
-
-
-_ = load_pipe() #loading wan2.2
+# _ = load_pipe() #loading wan2.2
 SEED = 123
 
 
 def handler(event):
     workdir = None
     clips = []
-
+    # ensure_models()
+    _ = load_pipe()
     try:
-        reset_runtime_env()
+        # reset_runtime_env()
         inp = event["input"]
-
+        print("===== FILESYSTEM TREE =====")
         # ---- Info-only mode ----
         if inp.get("aleef") is True:
             return {
